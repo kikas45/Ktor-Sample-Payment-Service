@@ -18,12 +18,27 @@ fun Application.configurePaymentRoutes(service: PaymentService) {
 
         // public — no auth needed
         get("/") {
-            call.respond(HttpStatusCode.OK, mapOf("status" to "UP", "service" to "Payment System API"))
-        }
+    call.respond(
+        HttpStatusCode.OK, 
+        mapOf(
+            "status" to "UP",
+            "service" to "Payment System API",
+            "environment" to (System.getenv("APP_ENV") ?: "production"),
+            "timestamp" to System.currentTimeMillis()
+        )
+    )
+}
 
-        get("/health") {
-            call.respond(HttpStatusCode.OK, mapOf("status" to "UP"))
-        }
+get("/health") {
+    call.respond(
+        HttpStatusCode.OK, 
+        mapOf(
+            "status" to "UP",
+            "healthy" to true
+        )
+    )
+}
+
 
         route("/merchants") {
 

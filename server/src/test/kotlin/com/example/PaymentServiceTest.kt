@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PaymentServiceTest {
@@ -61,7 +60,7 @@ class PaymentServiceTest {
             )
         }
         coVerify(exactly = 0) { merchantRepo.create(any()) }
-        Unit
+
     }
 
     @Test
@@ -208,7 +207,7 @@ class PaymentServiceTest {
             service.settleForMerchant(42)
         }
         coVerify(exactly = 0) { settlementRepo.settleForMerchant(any(), any()) }
-        Unit
+
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────

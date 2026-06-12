@@ -14,8 +14,11 @@ import kotlin.test.assertTrue
 class PaymentServiceTest {
 
     private lateinit var merchantRepo:    MerchantRepository
+
     private lateinit var transactionRepo: TransactionRepository
+
     private lateinit var settlementRepo:  SettlementRepository
+
     private lateinit var service:         PaymentService
 
     private val stubMerchant = Merchant(

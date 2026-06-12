@@ -176,7 +176,7 @@ So a ₦5,000 transaction costs ₦75 in fees. A ₦50,000 transaction costs ₦
 
 ## Bonus features implemented
 
-**Idempotency** — pass an `idempotencyKey` in the transaction request body. If you send the same key twice (e.g. network retry), the second request returns the original transaction without creating a duplicate. The key is stored with a UNIQUE constraint in the DB so even concurrent duplicates are handled safely.
+**Idempotency** — pass an `idempotencyKey` in the transaction request body. If you send the same key twice (e.g. network retry), the second request returns the original transaction without creating a duplicate. The key is stored with a UNIQUE constraint in the DB so even concurrent duplicates are handled safely.  and of course in reality, payment gate way like Flutter wave actually have a whole documentation regarding this in their official website.
 
 **Auth** — two schemes as described above. Basic auth for admin operations, bearer token for merchant operations. Credentials come from environment variables.
 

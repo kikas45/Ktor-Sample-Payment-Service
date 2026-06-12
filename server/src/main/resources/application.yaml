@@ -1,0 +1,12 @@
+ktor:
+  deployment:
+    port: 8080
+    host: 0.0.0.0
+  application:
+    modules:
+      - com.example.plugins.HttpKt.configureHttp
+      - com.example.plugins.SerializationKt.configureSerialization
+      - com.example.plugins.SecurityKt.configureSecurity
+      - com.example.plugins.AutoHeadResponseKt.configureAutoHeadResponse
+      - com.example.plugins.StatusPagesKt.configureStatusPages
+      - com.example.plugins.DatabasePluginKt.configureDatabase

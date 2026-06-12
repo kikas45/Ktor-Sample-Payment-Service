@@ -1,0 +1,24 @@
+[versions]
+h2        = "2.4.240"
+kotlin    = "2.3.21"
+logback   = "1.5.34"
+postgresql = "42.7.11"
+hikari    = "5.1.0"
+flyway    = "10.20.1"
+junit     = "5.11.3"
+mockk     = "1.13.13"
+
+[libraries]
+h2database-h2   = { module = "com.h2database:h2",                          version.ref = "h2" }
+logback-classic = { module = "ch.qos.logback:logback-classic",             version.ref = "logback" }
+postgresql      = { module = "org.postgresql:postgresql",                   version.ref = "postgresql" }
+hikari          = { module = "com.zaxxer:HikariCP",                        version.ref = "hikari" }
+flyway-core     = { module = "org.flywaydb:flyway-core",                   version.ref = "flyway" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql",    version.ref = "flyway" }
+junit-jupiter   = { module = "org.junit.jupiter:junit-jupiter",            version.ref = "junit" }
+mockk           = { module = "io.mockk:mockk",                             version.ref = "mockk" }
+
+[plugins]
+kotlin-jvm           = { id = "org.jetbrains.kotlin.jvm",                        version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform",              version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization",       version.ref = "kotlin" }

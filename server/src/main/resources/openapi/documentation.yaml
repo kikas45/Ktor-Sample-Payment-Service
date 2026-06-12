@@ -1,0 +1,464 @@
+openapi: "3.0.3"
+info:
+  title: "Payment System API"
+  description: |
+    Core backend for a payment institution. Handles merchant onboarding,
+    payment transaction initiation, and settlement batching.
+  version: "1.0.0"
+  contact:
+    name: "API Support"
+
+servers:
+  - url: "http://localhost:8080"
+    description: "Local development server"
+
+tags:
+  - name: Health
+    description: Service health checks
+  - name: Merchants
+    description: Merchant management
+  - name: Transactions
+    description: Payment transaction operations
+  - name: Settlement
+    description: Settlement batch operations
+
+paths:
+
+  /:
+    get:
+      tags: [Health]
+      summary: "API status"
+      description: "Returns the current status of the service."
+      responses:
+        "200":
+          description: "Service is running"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /health:
+    get:
+      tags: [Health]
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Healthy"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /merchants:
+    post:
+      tags: [Merchants]
+      summary: "Create a merchant"
+      description: |
+        Onboards a new merchant. Requires admin credentials (HTTP Basic Auth).
+        The merchant is created in ACTIVE status.
+      security:
+        - adminBasic: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMerchantRequest"
+            example:
+              businessName: "Acme Nigeria Ltd"
+              email: "finance@acme.ng"
+              settlementAccount: "0123456789"
+      responses:
+        "201":
+          description: "Merchant created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    get:
+      tags: [Merchants]
+      summary: "List all merchants"
+      security:
+        - merchantBearer: []
+      responses:
+        "200":
+          description: "List of merchants"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Merchant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /merchants/{id}:
+    get:
+      tags: [Merchants]
+      summary: "Get a merchant by ID"
+      security:
+        - merchantBearer: []
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+      responses:
+        "200":
+          description: "Merchant found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /merchants/{id}/transactions:
+    get:
+      tags: [Transactions]
+      summary: "List transactions for a merchant"
+      description: |
+        Returns all transactions for the given merchant.
+        Supports optional filtering by status and date range.
+      security:
+        - merchantBearer: []
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [INITIATED, SUCCESS, FAILED]
+          description: "Filter by transaction status"
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: "Inclusive start date (yyyy-MM-dd)"
+          example: "2025-01-01"
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: "Inclusive end date (yyyy-MM-dd)"
+          example: "2025-12-31"
+      responses:
+        "200":
+          description: "Transaction list"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /merchants/{id}/settle:
+    post:
+      tags: [Settlement]
+      summary: "Settle unsettled transactions"
+      description: |
+        Groups all SUCCESS + unsettled transactions for the merchant into a
+        settlement batch atomically, and returns a batch summary.
+        Throws 400 if there are no eligible transactions.
+      security:
+        - merchantBearer: []
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+      responses:
+        "200":
+          description: "Settlement batch summary"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettlementBatch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /transactions:
+    post:
+      tags: [Transactions]
+      summary: "Initiate a payment transaction"
+      description: |
+        Creates a new payment transaction.
+
+        **Fee schedule**: 1.5% of the amount, capped at 200 (in the transaction currency).
+
+        **Idempotency**: supply an `idempotencyKey` to make the call safe to retry.
+        If a transaction with the same key already exists, the original record is returned.
+
+        **Status simulation**: the transaction advances to SUCCESS immediately,
+        simulating a downstream processor acknowledgment.
+      security:
+        - merchantBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiateTransactionRequest"
+            examples:
+              standard:
+                summary: "Standard transaction"
+                value:
+                  amount: 5000.00
+                  merchantRef: "ORD-20250101-001"
+                  merchantId: 1
+                  currency: "NGN"
+              withIdempotency:
+                summary: "Idempotent transaction"
+                value:
+                  amount: 5000.00
+                  merchantRef: "ORD-20250101-001"
+                  merchantId: 1
+                  currency: "NGN"
+                  idempotencyKey: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "201":
+          description: "Transaction initiated (and processed)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+
+  securitySchemes:
+    adminBasic:
+      type: http
+      scheme: basic
+      description: "Admin credentials (ADMIN_USER / ADMIN_PASSWORD env vars)"
+    merchantBearer:
+      type: http
+      scheme: bearer
+      description: "Static bearer token (MERCHANT_API_TOKEN env var)"
+
+  parameters:
+    MerchantId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: "Merchant primary key"
+
+  responses:
+    BadRequest:
+      description: "Invalid request parameters"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: "Missing or invalid credentials"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: "Duplicate unique key"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "UP"
+        service:
+          type: string
+          example: "Payment System API"
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "Merchant 99 not found"
+
+    CreatedResponse:
+      type: object
+      required: [id, message]
+      properties:
+        id:
+          type: integer
+          example: 1
+        message:
+          type: string
+          example: "Merchant created successfully"
+
+    CreateMerchantRequest:
+      type: object
+      required: [businessName, email, settlementAccount]
+      properties:
+        businessName:
+          type: string
+          example: "Acme Nigeria Ltd"
+        email:
+          type: string
+          format: email
+          example: "finance@acme.ng"
+        settlementAccount:
+          type: string
+          description: "Bank account number or wallet identifier"
+          example: "0123456789"
+
+    Merchant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        businessName:
+          type: string
+          example: "Acme Nigeria Ltd"
+        email:
+          type: string
+          example: "finance@acme.ng"
+        settlementAccount:
+          type: string
+          example: "0123456789"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+          example: "ACTIVE"
+        createdAt:
+          type: string
+          format: date-time
+
+    InitiateTransactionRequest:
+      type: object
+      required: [amount, merchantRef, merchantId]
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 5000.00
+        merchantRef:
+          type: string
+          description: "Caller-supplied reference (e.g. order ID)"
+          example: "ORD-20250101-001"
+        merchantId:
+          type: integer
+          example: 1
+        currency:
+          type: string
+          default: "NGN"
+          example: "NGN"
+        idempotencyKey:
+          type: string
+          description: "Optional UUID for safe retries"
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        amount:
+          type: number
+          example: 5000.00
+        currency:
+          type: string
+          example: "NGN"
+        status:
+          type: string
+          enum: [INITIATED, SUCCESS, FAILED]
+          example: "SUCCESS"
+        merchantRef:
+          type: string
+          example: "ORD-20250101-001"
+        internalRef:
+          type: string
+          example: "TXN-A3F9C2D1E8B04762"
+        fee:
+          type: number
+          description: "Fee deducted (1.5% of amount, max 200)"
+          example: 75.00
+        merchantId:
+          type: integer
+          example: 1
+        settlementBatchId:
+          type: integer
+          nullable: true
+          example: null
+        idempotencyKey:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SettlementBatch:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        batchRef:
+          type: string
+          example: "BATCH-A3F9C2D1E8B0"
+        merchantId:
+          type: integer
+          example: 1
+        totalAmount:
+          type: number
+          example: 25000.00
+        feeDeducted:
+          type: number
+          example: 375.00
+        transactionCount:
+          type: integer
+          example: 5
+        netAmount:
+          type: number
+          description: "totalAmount - feeDeducted"
+          example: 24625.00
+        createdAt:
+          type: string
+          format: date-time

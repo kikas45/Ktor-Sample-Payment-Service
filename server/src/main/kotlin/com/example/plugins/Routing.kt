@@ -22,8 +22,7 @@ fun Application.configurePaymentRoutes(service: PaymentService) {
         HttpStatusCode.OK, 
         mapOf(
             "status" to "UP",
-            "service" to "Payment System API",
-            "environment" to (System.getenv("APP_ENV") ?: "production"),
+            "service" to "Ktor Sample Server Payment System API",
             "timestamp" to System.currentTimeMillis()
         )
     )
@@ -34,10 +33,12 @@ get("/health") {
         HttpStatusCode.OK, 
         mapOf(
             "status" to "UP",
-            "healthy" to true
+            "healthy" to true,
+            "timestamp" to System.currentTimeMillis()
         )
     )
 }
+
 
 
         route("/merchants") {
